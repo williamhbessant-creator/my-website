@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Public Chat</title>
+
+    <link rel="stylesheet" id="themeStylesheet" href="/static/darkstyle.css">
+
+    <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>Woocorp Public Chat</h1>
+
+    <div id="chat-box"></div>
+
+    <div class="controls">
+
+        <input
+            type="text"
+            id="username"
+            placeholder="Username"
+            maxlength="20"
+        >
+
+        <input
+            type="text"
+            id="message"
+            placeholder="Type your message..."
+            maxlength="500"
+        >
+
+        <button id="sendButton">
+            Send
+        </button>
+
+        <button id="themeButton" title="Toggle theme">
+            <img src="/static/icons8-light-48.png" alt="Toggle theme" />
+            Theme
+        </button>
+
+        <button id="clearButton">
+            Clear Chat
+        </button>
+
+    </div>
+
+</div>
+
+<script src="/static/script.js"></script>
+
+</body>
+</html>
