@@ -5,10 +5,14 @@ from datetime import datetime
 from supabase import create_client
 import threading
 
-SUPABASE_URL = "https://ckyurlyxqjydhejcbxpo.supabase.co"
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNreXVybHl4cWp5ZGhlamNieHBvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MzQ0MzEzNywiZXhwIjoyMDk5MDE5MTM3fQ.E5yZ_n0QC6Zsq7vjWRciNPwY2Fc2m80KbIfKN5uGllM"  # store in an environment variable
-supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
+SUPABASE_URL = os.environ["SUPABASE_URL"]
+SUPABASE_KEY = os.environ["SUPABASE_PUBLISHABLE_KEY"]
+
+supabase = create_client(
+    SUPABASE_URL,
+    SUPABASE_KEY
+)
 
 # -----------------------------
 # Flask Setup
