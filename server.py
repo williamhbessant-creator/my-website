@@ -30,7 +30,7 @@ socketio = SocketIO(
 # -----------------------------
 @app.route("/")
 def index():
-    return render_template("temlates/index.html")
+    return render_template("index.html")
 
 # -----------------------------
 # Send Chat History
