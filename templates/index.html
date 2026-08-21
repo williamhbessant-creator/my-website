@@ -3,11 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Public Chat</title>
 
-    <link rel="stylesheet" id="themeStylesheet" href="/static/darkstyle.css">
+    <title>Woocorp Public Chat</title>
 
-    <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+    <link
+        rel="stylesheet"
+        id="themeStylesheet"
+        href="{{ url_for('static', filename='darkstyle.css') }}"
+    >
+
+    <script
+        src="https://cdn.socket.io/4.8.1/socket.io.min.js"
+    ></script>
 </head>
 
 <body>
@@ -38,12 +45,15 @@
             Send
         </button>
 
-        <button id="themeButton" title="Toggle theme">
-            <img src="/icons8-light-48.png" alt="Toggle theme" />
+        <button id="themeButton" type="button">
+            <img
+                src="{{ url_for('static', filename='icons8-light-48.png') }}"
+                alt="Toggle theme"
+            >
             Theme
         </button>
 
-        <button id="clearButton">
+        <button id="clearButton" type="button">
             Clear Chat
         </button>
 
@@ -51,7 +61,7 @@
 
 </div>
 
-<script src="/script.js"></script>
+<script src="{{ url_for('static', filename='script.js') }}"></script>
 
 </body>
 </html>
