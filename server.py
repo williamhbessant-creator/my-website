@@ -17,8 +17,10 @@ supabase = create_client(
 # -----------------------------
 # Flask Setup
 # -----------------------------
-app = Flask(__name__)
-app.config["SECRET_KEY"] = "chat-secret-key"
+app.config["SECRET_KEY"] = os.environ.get(
+    "FLASK_SECRET_KEY",
+    "development-secret"
+)
 
 socketio = SocketIO(
     app,
