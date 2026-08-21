@@ -6,62 +6,96 @@
 
     <title>Woocorp Public Chat</title>
 
+    <!-- Dark theme is loaded by default -->
     <link
-        rel="stylesheet"
         id="themeStylesheet"
+        rel="stylesheet"
         href="{{ url_for('static', filename='darkstyle.css') }}"
     >
-
-    <script
-        src="https://cdn.socket.io/4.8.1/socket.io.min.js"
-    ></script>
 </head>
 
 <body>
 
-<div class="container">
+    <div class="container">
 
-    <h1>Woocorp Public Chat</h1>
-
-    <div id="chat-box"></div>
-
-    <div class="controls">
-
-        <input
-            type="text"
-            id="username"
-            placeholder="Username"
-            maxlength="20"
-        >
-
-        <input
-            type="text"
-            id="message"
-            placeholder="Type your message..."
-            maxlength="500"
-        >
-
-        <button id="sendButton">
-            Send
-        </button>
-
-        <button id="themeButton" type="button">
+        <header>
             <img
-                src="{{ url_for('static', filename='icons8-light-48.png') }}"
-                alt="Toggle theme"
+                src="{{ url_for('static', filename='woocorplogo.png') }}"
+                alt="Woocorp Logo"
+                class="logo"
             >
-            Theme
-        </button>
 
-        <button id="clearButton" type="button">
-            Clear Chat
-        </button>
+            <h1>Woocorp Public Chat</h1>
+        </header>
+
+
+        <!-- Chat messages -->
+        <div id="chat-box"></div>
+
+
+        <!-- Controls -->
+        <div class="controls">
+
+            <input
+                type="text"
+                id="username"
+                placeholder="Username"
+                maxlength="20"
+                autocomplete="off"
+            >
+
+            <input
+                type="text"
+                id="message"
+                placeholder="Type your message..."
+                maxlength="500"
+                autocomplete="off"
+            >
+
+            <button
+                id="sendButton"
+                type="button"
+            >
+                Send
+            </button>
+
+
+            <button
+                id="themeButton"
+                type="button"
+            >
+                <img
+                    src="{{ url_for('static', filename='icons8-light-48.png') }}"
+                    alt=""
+                    class="theme-icon"
+                >
+
+                Theme
+            </button>
+
+
+            <button
+                id="clearButton"
+                type="button"
+            >
+                Clear Chat
+            </button>
+
+        </div>
 
     </div>
 
-</div>
-    
-<script src="{{ url_for('static', filename='script.js') }}"></script>
+
+    <!-- Socket.IO -->
+    <script
+        src="https://cdn.socket.io/4.8.1/socket.io.min.js">
+    </script>
+
+
+    <!-- Your chat JavaScript -->
+    <script
+        src="{{ url_for('static', filename='script.js') }}">
+    </script>
 
 </body>
 </html>
