@@ -3,94 +3,55 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
     <title>Woocorp Public Chat</title>
-
-    <!-- Dark theme is loaded by default -->
-    <link
-        id="themeStylesheet"
-        rel="stylesheet"
-        href="{{ url_for('static', filename='darkstyle.css') }}"
-    >
+    <link id="themeStylesheet" rel="stylesheet" href="{{ url_for('static', filename='darkstyle.css') }}">
 </head>
-
 <body>
-
     <div class="container">
-
         <header>
-
             <h1>Woocorp Public Chat</h1>
+            <button id="aiOpenButton" class="ai-open-button" type="button">🤖 AI Assistant</button>
         </header>
 
-
-        <!-- Chat messages -->
         <div id="chat-box"></div>
 
-
-        <!-- Controls -->
         <div class="controls">
-
-            <input
-                type="text"
-                id="username"
-                placeholder="Username"
-                maxlength="20"
-                autocomplete="off"
-            >
-
-            <input
-                type="text"
-                id="message"
-                placeholder="Type your message..."
-                maxlength="500"
-                autocomplete="off"
-            >
-
-            <button
-                id="sendButton"
-                type="button"
-            >
-                Send
-            </button>
-
-
-            <button
-                id="themeButton"
-                type="button"
-            >
-                <img
-                    src="{{ url_for('static', filename='icons8-light-48.png') }}"
-                    alt=""
-                    class="theme-icon"
-                >
-
+            <input type="text" id="username" placeholder="Username" maxlength="20" autocomplete="off">
+            <input type="text" id="message" placeholder="Type your message..." maxlength="500" autocomplete="off">
+            <button id="sendButton" type="button">Send</button>
+            <button id="themeButton" type="button">
+                <img src="{{ url_for('static', filename='icons8-light-48.png') }}" alt="" class="theme-icon">
                 Theme
             </button>
-
-
-            <button
-                id="clearButton"
-                type="button"
-            >
-                Clear Chat
-            </button>
-
+            <button id="clearButton" type="button">Clear Chat</button>
         </div>
-
     </div>
 
+    <div id="aiOverlay" class="ai-overlay" aria-hidden="true"></div>
 
-    <!-- Socket.IO -->
-    <script
-        src="https://cdn.socket.io/4.8.1/socket.io.min.js">
-    </script>
+    <aside id="aiSidebar" class="ai-sidebar" aria-hidden="true">
+        <div class="ai-header">
+            <div>
+                <div class="ai-title">🤖 AI Assistant</div>
+                <div class="ai-status">Ready to help</div>
+            </div>
+            <button id="aiCloseButton" class="ai-close-button" type="button">×</button>
+        </div>
 
+        <div id="aiMessages" class="ai-messages">
+            <div class="ai-message ai-message-assistant">
+                <div class="ai-message-name">AI Assistant</div>
+                <div>Hello! How can I help?</div>
+            </div>
+        </div>
 
-    <!-- Your chat JavaScript -->
-    <script
-        src="{{ url_for('static', filename='script.js') }}">
-    </script>
+        <form id="aiForm" class="ai-input-area">
+            <textarea id="aiInput" rows="1" maxlength="2000" placeholder="Ask the AI..." autocomplete="off"></textarea>
+            <button id="aiSendButton" type="submit">Send</button>
+        </form>
+    </aside>
 
+    <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>
