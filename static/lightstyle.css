@@ -55,6 +55,10 @@ h1 {
 
 .message {
     color: #222222;
+    padding: 8px;
+    margin-bottom: 8px;
+    border-bottom: 1px solid #444;
+    word-wrap: break-word;
 }
 .time {
     color: #666666;
