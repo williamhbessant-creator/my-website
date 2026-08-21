@@ -5,67 +5,62 @@ const username = document.getElementById("username");
 const message = document.getElementById("message");
 const sendButton = document.getElementById("sendButton");
 const clearButton = document.getElementById("clearButton");
-let themeButton = document.getElementById("themeButton");
-const originalTitle = document.title;
-const themeLink = document.getElementById("themeStylesheet") || document.querySelector('link[rel="stylesheet"][href*="style"]');
-const themeIconSrc = "/static/icons8-light-48.png";
+const themeButton = document.getElementById("themeButton");
+const themeStylesheet = document.getElementById("themeStylesheet");
 
-function createThemeButton() {
-    const button = document.createElement("button");
-    button.id = "themeButton";
-    button.title = "Toggle theme";
 
-    const img = document.createElement("img");
-    img.src = themeIconSrc;
-    img.alt = "Toggle theme";
-    img.style.width = "20px";
-    img.style.height = "20px";
-    img.style.verticalAlign = "middle";
-    img.style.marginRight = "6px";
+// ================================
+// THEME
+// ================================
 
-    button.appendChild(img);
-    button.appendChild(document.createTextNode("Theme"));
-    button.addEventListener("click", toggleTheme);
-    return button;
-}
+function applyTheme(theme) {
 
-function updateThemeIcon(mode) {
-    if (!themeButton) return;
-    const icon = themeButton.querySelector("img");
-    if (!icon) return;
-    icon.src = themeIconSrc;
-}
-
-function applyTheme(mode) {
-    const normalized = mode === "dark" ? "dark" : "light";
-    if (themeLink) {
-        themeLink.href = `/static/${normalized}style.css`;
+    if (theme === "light") {
+        themeStylesheet.href = "/static/lightstyle.css";
+    } else {
+        themeStylesheet.href = "/static/darkstyle.css";
+        theme = "dark";
     }
-    localStorage.setItem("chatTheme", normalized);
-    updateThemeIcon(normalized);
+
+    localStorage.setItem("chatTheme", theme);
 }
+
 
 function toggleTheme() {
-    const current = localStorage.getItem("chatTheme") || "light";
-    applyTheme(current === "light" ? "dark" : "light");
-}
 
-if (!themeButton) {
-    themeButton = createThemeButton();
-    if (clearButton && clearButton.parentNode) {
-        clearButton.parentNode.insertBefore(themeButton, clearButton);
+    const currentTheme =
+        localStorage.getItem("chatTheme") || "dark";
+
+    if (currentTheme === "dark") {
+        applyTheme("light");
     } else {
-        const controls = document.querySelector(".controls");
-        if (controls) controls.appendChild(themeButton);
+        applyTheme("dark");
     }
 }
 
-const savedTheme = localStorage.getItem("chatTheme") || "dark";
-applyTheme(savedTheme);
 
-if (themeButton) {
-    themeButton.addEventListener("click", toggleTheme);
+themeButton.addEventListener("click", toggleTheme);
+
+
+// Load saved theme
+applyTheme(
+    localStorage.getItem("chatTheme") || "dark"
+);
+
+
+// ================================
+// MESSAGES
+// ================================
+
+function escapeHtml(text) {
+
+    const div = document.createElement("div");
+
+    div.textContent = text;
+
+    return div.innerHTML;
 }
+
 
 function addMessage(user, text, time) {
 
@@ -76,112 +71,86 @@ function addMessage(user, text, time) {
     } else {
         div.className = "message";
     }
-    
 
     div.innerHTML =
-        `<span class="time">[${time}]</span> ` +
+        `<span class="time">[${escapeHtml(time)}]</span> ` +
         `<span class="user">${escapeHtml(user)}</span>: ` +
         `<span class="text">${escapeHtml(text)}</span>`;
 
     chatBox.appendChild(div);
+
     chatBox.scrollTop = chatBox.scrollHeight;
 }
 
-function escapeHtml(str) {
-    return str
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;");
-}
 
-function requestNotificationPermission() {
-    if (!("Notification" in window)) return;
+// ================================
+// LOAD CHAT HISTORY
+// ================================
 
-    if (Notification.permission === "default") {
-        Notification.requestPermission().catch(() => {});
-    }
-}
+socket.on("connect", () => {
 
-function flashTitle(text) {
-    if (document.title !== text) {
-        document.title = text;
-    }
-}
+    console.log("Connected to chat server");
 
-function restoreTitle() {
-    document.title = originalTitle;
-}
+    socket.emit("request_history");
 
-function playMessageSound() {
-    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-    if (!AudioContextClass) return;
+});
 
-    const audioContext = new AudioContextClass();
-    const oscillator = audioContext.createOscillator();
-    const gainNode = audioContext.createGain();
 
-    oscillator.type = "triangle";
-    oscillator.frequency.setValueAtTime(880, audioContext.currentTime);
-    oscillator.frequency.exponentialRampToValueAtTime(1320, audioContext.currentTime + 0.12);
+socket.on("disconnect", () => {
 
-    gainNode.gain.setValueAtTime(0.04, audioContext.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.2);
+    console.log("Disconnected from chat server");
 
-    oscillator.connect(gainNode);
-    gainNode.connect(audioContext.destination);
+});
 
-    oscillator.start();
-    oscillator.stop(audioContext.currentTime + 0.2);
-}
 
-function showNotification(user, text) {
-    const shouldNotify = document.visibilityState !== "visible" || !document.hasFocus();
+socket.on("connect_error", (error) => {
 
-    if (!shouldNotify) return;
+    console.error(
+        "Socket.IO connection error:",
+        error
+    );
 
-    if ("Notification" in window && Notification.permission === "granted") {
-        new Notification(`New message from ${user}`, {
-            body: text,
-            tag: "public-chat-message"
-        });
-        playMessageSound();
-        return;
-    }
+});
 
-    flashTitle(`New message from ${user}`);
-    playMessageSound();
-}
-
-window.addEventListener("focus", restoreTitle);
-window.addEventListener("click", requestNotificationPermission, { once: true });
-message.addEventListener("focus", requestNotificationPermission);
-
-socket.emit("request_history");
 
 socket.on("chat_history", (history) => {
+
     chatBox.innerHTML = "";
 
     history.forEach(msg => {
-        addMessage(msg[0], msg[1], msg[2]);
+
+        addMessage(
+            msg[0],
+            msg[1],
+            msg[2]
+        );
+
     });
+
 });
 
+
 socket.on("new_message", (data) => {
+
     addMessage(
         data.username,
         data.message,
         data.timestamp
     );
 
-    const currentUser = username.value.trim();
-    if (data.username !== currentUser) {
-        showNotification(data.username, data.message);
-    }
 });
 
+
 socket.on("history_cleared", () => {
+
     chatBox.innerHTML = "";
+
 });
+
+
+// ================================
+// SEND MESSAGE
+// ================================
 
 function sendMessage() {
 
@@ -189,35 +158,76 @@ function sendMessage() {
     const text = message.value.trim();
 
     if (user === "") {
+
         alert("Please enter a username.");
+
+        username.focus();
+
         return;
     }
 
-    if (text === "") return;
+    if (text === "") {
 
-    requestNotificationPermission();
+        message.focus();
+
+        return;
+    }
 
     socket.emit("send_message", {
+
         username: user,
+
         message: text
+
     });
 
     message.value = "";
+
     message.focus();
 }
 
-sendButton.onclick = sendMessage;
 
-message.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-        sendMessage();
+sendButton.addEventListener(
+    "click",
+    sendMessage
+);
+
+
+message.addEventListener(
+    "keydown",
+    (event) => {
+
+        if (event.key === "Enter") {
+
+            event.preventDefault();
+
+            sendMessage();
+
+        }
+
     }
-});
+);
 
-clearButton.onclick = () => {
 
-    if (confirm("Clear the entire chat history?")) {
-        socket.emit("clear_history");
+// ================================
+// CLEAR CHAT
+// ================================
+
+clearButton.addEventListener(
+    "click",
+    () => {
+
+        if (
+            confirm(
+                "Clear the entire chat history?"
+            )
+        ) {
+
+            socket.emit(
+                "clear_history"
+            );
+
+        }
+
     }
-
-};
+);
