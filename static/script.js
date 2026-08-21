@@ -39,6 +39,9 @@ const aiOverlay = document.getElementById("aiOverlay");
 const aiForm = document.getElementById("aiForm");
 const aiInput = document.getElementById("aiInput");
 const aiMessages = document.getElementById("aiMessages");
+const aiSendButton = document.getElementById("aiSendButton");
+
+const aiConversation = [];
 
 function openAI() {
     aiSidebar.classList.add("open");
@@ -78,20 +81,64 @@ function addAIMessage(text, type) {
     div.appendChild(body);
     aiMessages.appendChild(div);
     aiMessages.scrollTop = aiMessages.scrollHeight;
+
+    return div;
+}
+
+function setAILoading(loading) {
+    aiSendButton.disabled = loading;
+    aiInput.disabled = loading;
+    aiSendButton.textContent = loading ? "..." : "Send";
+}
+
+async function sendAIMessage() {
+    const text = aiInput.value.trim();
+    if (!text || aiSendButton.disabled) return;
+
+    addAIMessage(text, "user");
+    aiConversation.push({ role: "user", content: text });
+    aiInput.value = "";
+    setAILoading(true);
+
+    const loadingMessage = addAIMessage("Thinking...", "assistant");
+
+    try {
+        const response = await fetch("/api/ai", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                message: text,
+                history: aiConversation.slice(-12)
+            })
+        });
+
+        const data = await response.json();
+
+        loadingMessage.remove();
+
+        if (!response.ok) {
+            throw new Error(data.error || "AI request failed.");
+        }
+
+        const reply = data.response || "The AI returned an empty response.";
+        addAIMessage(reply, "assistant");
+        aiConversation.push({ role: "assistant", content: reply });
+
+    } catch (error) {
+        loadingMessage.remove();
+        addAIMessage(`Sorry, I couldn't reach the AI: ${error.message}`, "assistant");
+        console.error("AI request error:", error);
+    } finally {
+        setAILoading(false);
+        aiInput.focus();
+    }
 }
 
 aiForm.addEventListener("submit", (event) => {
     event.preventDefault();
-    const text = aiInput.value.trim();
-    if (!text) return;
-
-    addAIMessage(text, "user");
-    aiInput.value = "";
-
-    // AI backend can be connected here later.
-    setTimeout(() => {
-        addAIMessage("The AI assistant is ready, but its AI backend has not been connected yet.", "assistant");
-    }, 300);
+    sendAIMessage();
 });
 
 aiInput.addEventListener("keydown", (event) => {
