@@ -74,7 +74,7 @@ def ai_assistant():
 
     try:
         response = openai_client.responses.create(
-            model="gpt-5.6-luna",
+            model="gpt-4.1 mini
             instructions=(
                 "You are the AI assistant inside Woocorp Public Chat. "
                 "Be helpful, concise, friendly, and clear."
