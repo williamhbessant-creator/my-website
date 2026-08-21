@@ -17,6 +17,9 @@ supabase = create_client(
 # -----------------------------
 # Flask Setup
 # -----------------------------
+# Flask Setup
+app = Flask(__name__)
+
 app.config["SECRET_KEY"] = os.environ.get(
     "FLASK_SECRET_KEY",
     "development-secret"
