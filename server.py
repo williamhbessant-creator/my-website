@@ -94,7 +94,7 @@ def send_history():
         emit("chat_history", rows)
     except Exception as error:
         print("History load failed:", repr(error))
-        emit("message_action_error", {"error": "Could not load chat messages."})
+        emit("message_action_error", {"error": f"Could not load chat messages: {error}"})
 
 
 @socketio.on("send_message")
@@ -111,12 +111,16 @@ def handle_message(data):
 
         timestamp = datetime.now().strftime("%H:%M:%S")
         result = (supabase.table("messageport5555")
-                  .insert({"username": username, "message": message, "timestamp": timestamp, "protected": False})
+                  .insert({
+                      "username": username,
+                      "message": message,
+                      "timestamp": timestamp
+                  })
                   .select("id, username, message, timestamp, protected")
-                  .single().execute())
-        row = result.data
+                  .single()
+                  .execute())
 
-        # Send to every connected client, including the sender.
+        row = result.data
         socketio.emit("new_message", {
             "id": row["id"],
             "username": row["username"],
@@ -126,7 +130,7 @@ def handle_message(data):
         })
     except Exception as error:
         print("Send message failed:", repr(error))
-        emit("message_action_error", {"error": "Could not send the message. Please try again."})
+        emit("message_action_error", {"error": f"Could not send the message: {error}"})
 
 
 @socketio.on("delete_message")
@@ -135,14 +139,16 @@ def delete_message(data):
         message_id = int(data.get("id"))
         result = (supabase.table("messageport5555").select("id, protected").eq("id", message_id).maybe_single().execute())
         if not result.data:
-            emit("message_action_error", {"error": "Message not found."}); return
+            emit("message_action_error", {"error": "Message not found."})
+            return
         if bool(result.data.get("protected", False)):
-            emit("message_action_error", {"error": "That message is protected from deletion."}); return
+            emit("message_action_error", {"error": "That message is protected from deletion."})
+            return
         supabase.table("messageport5555").delete().eq("id", message_id).execute()
         socketio.emit("message_deleted", {"id": message_id})
     except Exception as error:
         print("Delete message failed:", repr(error))
-        emit("message_action_error", {"error": "Could not delete the message."})
+        emit("message_action_error", {"error": f"Could not delete the message: {error}"})
 
 
 @socketio.on("toggle_message_protection")
@@ -151,13 +157,14 @@ def toggle_message_protection(data):
         message_id = int(data.get("id"))
         result = (supabase.table("messageport5555").select("id, protected").eq("id", message_id).maybe_single().execute())
         if not result.data:
-            emit("message_action_error", {"error": "Message not found."}); return
+            emit("message_action_error", {"error": "Message not found."})
+            return
         new_protected = not bool(result.data.get("protected", False))
         supabase.table("messageport5555").update({"protected": new_protected}).eq("id", message_id).execute()
         socketio.emit("message_protection_changed", {"id": message_id, "protected": new_protected})
     except Exception as error:
         print("Protection change failed:", repr(error))
-        emit("message_action_error", {"error": "Could not change message protection."})
+        emit("message_action_error", {"error": f"Could not change message protection: {error}"})
 
 
 @socketio.on("clear_history")
@@ -167,7 +174,7 @@ def clear_history():
         socketio.emit("history_cleared")
     except Exception as error:
         print("Clear history failed:", repr(error))
-        emit("message_action_error", {"error": "Could not clear the chat."})
+        emit("message_action_error", {"error": f"Could not clear the chat: {error}"})
 
 
 if __name__ == "__main__":
