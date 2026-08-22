@@ -110,17 +110,28 @@ def handle_message(data):
             return
 
         timestamp = datetime.now().strftime("%H:%M:%S")
+        # Insert first, then query the inserted row. This works with the
+        # installed Supabase Python client, which does not provide .single()
+        # on this builder in the deployed version.
+        supabase.table("messageport5555").insert({
+            "username": username,
+            "message": message,
+            "timestamp": timestamp
+        }).execute()
+
         result = (supabase.table("messageport5555")
-                  .insert({
-                      "username": username,
-                      "message": message,
-                      "timestamp": timestamp
-                  })
                   .select("id, username, message, timestamp, protected")
-                  .single()
+                  .eq("username", username)
+                  .eq("message", message)
+                  .eq("timestamp", timestamp)
+                  .order("id", desc=True)
+                  .limit(1)
                   .execute())
 
-        row = result.data
+        if not result.data:
+            raise RuntimeError("Message was inserted but could not be read back from Supabase.")
+
+        row = result.data[0]
         socketio.emit("new_message", {
             "id": row["id"],
             "username": row["username"],
