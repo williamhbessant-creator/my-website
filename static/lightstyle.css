@@ -32,7 +32,7 @@ h1 { text-align: center; }
 .server-message .time { color: #ffffff; }
 
 .message {
-    color: #dddddd63;
+    color: #808080;
     padding: 8px;
     margin-bottom: 8px;
     border-bottom: 1px solid #ddd;
