@@ -42,6 +42,7 @@ const aiMessages = document.getElementById("aiMessages");
 const aiSendButton = document.getElementById("aiSendButton");
 
 const aiConversation = [];
+let aiUsesRemaining = null;
 
 function openAI() {
     aiSidebar.classList.add("open");
@@ -85,9 +86,31 @@ function addAIMessage(text, type) {
     return div;
 }
 
+function updateUsesRemaining(remaining) {
+    if (typeof remaining !== "number") return;
+
+    aiUsesRemaining = remaining;
+
+    let usesElement = document.getElementById("aiUsesRemaining");
+    if (!usesElement) {
+        usesElement = document.createElement("div");
+        usesElement.id = "aiUsesRemaining";
+        usesElement.className = "ai-uses-remaining";
+        aiMessages.parentElement.insertBefore(usesElement, aiMessages);
+    }
+
+    usesElement.textContent = `${remaining} AI uses remaining`;
+
+    if (remaining <= 0) {
+        aiInput.disabled = true;
+        aiSendButton.disabled = true;
+        aiInput.placeholder = "No AI uses remaining";
+    }
+}
+
 function setAILoading(loading) {
-    aiSendButton.disabled = loading;
-    aiInput.disabled = loading;
+    aiSendButton.disabled = loading || aiUsesRemaining === 0;
+    aiInput.disabled = loading || aiUsesRemaining === 0;
     aiSendButton.textContent = loading ? "..." : "Send";
 }
 
@@ -115,8 +138,11 @@ async function sendAIMessage() {
         });
 
         const data = await response.json();
-
         loadingMessage.remove();
+
+        if (typeof data.uses_remaining === "number") {
+            updateUsesRemaining(data.uses_remaining);
+        }
 
         if (!response.ok) {
             throw new Error(data.error || "AI request failed.");
@@ -128,11 +154,11 @@ async function sendAIMessage() {
 
     } catch (error) {
         loadingMessage.remove();
-        addAIMessage(`Sorry, I couldn't reach the AI: ${error.message}`, "assistant");
+        addAIMessage(error.message, "assistant");
         console.error("AI request error:", error);
     } finally {
         setAILoading(false);
-        aiInput.focus();
+        if (aiUsesRemaining !== 0) aiInput.focus();
     }
 }
 
@@ -160,46 +186,30 @@ function escapeHtml(text) {
 function addMessage(user, text, time) {
     const div = document.createElement("div");
     div.className = user === "[SERVER]" ? "message server-message" : "message";
-
     div.innerHTML =
         `<span class="time">[${escapeHtml(time)}]</span> ` +
         `<span class="user">${escapeHtml(user)}</span>: ` +
         `<span class="text">${escapeHtml(text)}</span>`;
-
     chatBox.appendChild(div);
     chatBox.scrollTop = chatBox.scrollHeight;
 }
 
-// ================================
-// LOAD CHAT HISTORY
-// ================================
 socket.on("connect", () => {
     console.log("Connected to chat server");
     socket.emit("request_history");
 });
 
 socket.on("disconnect", () => console.log("Disconnected from chat server"));
-
-socket.on("connect_error", (error) => {
-    console.error("Socket.IO connection error:", error);
-});
+socket.on("connect_error", (error) => console.error("Socket.IO connection error:", error));
 
 socket.on("chat_history", (history) => {
     chatBox.innerHTML = "";
     history.forEach(msg => addMessage(msg[0], msg[1], msg[2]));
 });
 
-socket.on("new_message", (data) => {
-    addMessage(data.username, data.message, data.timestamp);
-});
+socket.on("new_message", (data) => addMessage(data.username, data.message, data.timestamp));
+socket.on("history_cleared", () => chatBox.innerHTML = "");
 
-socket.on("history_cleared", () => {
-    chatBox.innerHTML = "";
-});
-
-// ================================
-// SEND MESSAGE
-// ================================
 function sendMessage() {
     const user = username.value.trim();
     const text = message.value.trim();
@@ -209,7 +219,6 @@ function sendMessage() {
         username.focus();
         return;
     }
-
     if (text === "") {
         message.focus();
         return;
@@ -229,9 +238,6 @@ message.addEventListener("keydown", (event) => {
     }
 });
 
-// ================================
-// CLEAR CHAT
-// ================================
 clearButton.addEventListener("click", () => {
     if (confirm("Clear the entire chat history?")) {
         socket.emit("clear_history");
