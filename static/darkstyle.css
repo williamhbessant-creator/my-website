@@ -32,7 +32,7 @@ h1 { text-align: center; }
 .server-message .user { color: #058110; font-weight: bold; }
 .server-message .text { color: #058110; }
 .server-message .time { color: #2e2e2e; }
-.message { color: #dddddd63; padding: 8px; margin-bottom: 8px; border-bottom: 1px solid #444; word-wrap: break-word; }
+.message { color: #808080; padding: 8px; margin-bottom: 8px; border-bottom: 1px solid #444; word-wrap: break-word; }
 .time { color: #999; font-size: 12px; }
 .user { color: #4FC3F7; font-weight: bold; }
 .text { color: white; }
