@@ -4,50 +4,47 @@ import os
 from datetime import datetime
 from supabase import create_client
 from openai import OpenAI
+import hashlib
 
 
 SUPABASE_URL = os.environ["SUPABASE_URL"]
 SUPABASE_KEY = os.environ["SUPABASE_PUBLISHABLE_KEY"]
 AI_KEY = os.environ.get("AI_KEY")
 
-supabase = create_client(
-    SUPABASE_URL,
-    SUPABASE_KEY
-)
+supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# -----------------------------
-# Flask Setup
-# -----------------------------
 app = Flask(__name__)
+app.config["SECRET_KEY"] = os.environ.get("FLASK_SECRET_KEY", "development-secret")
 
-app.config["SECRET_KEY"] = os.environ.get(
-    "FLASK_SECRET_KEY",
-    "development-secret"
-)
+socketio = SocketIO(app, cors_allowed_origins="*")
 
-socketio = SocketIO(
-    app,
-    cors_allowed_origins="*"
-)
-
-# Create the OpenAI client only when the server has the secret.
-# The secret never gets sent to the browser.
 openai_client = OpenAI(api_key=AI_KEY) if AI_KEY else None
 
-# -----------------------------
-# Home Page
-# -----------------------------
+# One AI use per visitor while this server instance is running.
+# The IP is hashed so the raw IP address is not stored in this set.
+ai_users = set()
+
+
+def ai_user_id():
+    forwarded = request.headers.get("X-Forwarded-For", "")
+    ip = forwarded.split(",")[0].strip() if forwarded else request.remote_addr
+    ip = ip or "unknown"
+    return hashlib.sha256(ip.encode("utf-8")).hexdigest()
+
+
 @app.route("/")
 def index():
     return render_template("index.html")
 
-# -----------------------------
-# AI Assistant
-# -----------------------------
+
 @app.post("/api/ai")
 def ai_assistant():
     if openai_client is None:
         return jsonify({"error": "AI_KEY is not configured on the server."}), 500
+
+    user_id = ai_user_id()
+    if user_id in ai_users:
+        return jsonify({"error": "You have already used the AI assistant. Each person can use it once."}), 429
 
     data = request.get_json(silent=True) or {}
     message = str(data.get("message", "")).strip()
@@ -59,7 +56,6 @@ def ai_assistant():
     if len(message) > 2000:
         return jsonify({"error": "Message is too long."}), 400
 
-    # Keep only recent, valid conversation messages and limit their size.
     conversation = []
     if isinstance(history, list):
         for item in history[-12:]:
@@ -74,7 +70,7 @@ def ai_assistant():
 
     try:
         response = openai_client.responses.create(
-            model="gpt-4.1 mini
+            model="gpt-4.1-mini",
             instructions=(
                 "You are the AI assistant inside Woocorp Public Chat. "
                 "Be helpful, concise, friendly, and clear."
@@ -82,18 +78,17 @@ def ai_assistant():
             input=conversation,
         )
 
+        # Only consume the one allowed use after a successful AI response.
+        ai_users.add(user_id)
         return jsonify({"response": response.output_text})
 
     except Exception as error:
         print("AI request failed:", repr(error))
         return jsonify({"error": "The AI assistant could not get a response."}), 502
 
-# -----------------------------
-# Send Chat History
-# -----------------------------
+
 @socketio.on("request_history")
 def send_history():
-
     response = (
         supabase
         .table("messageport5555")
@@ -104,26 +99,18 @@ def send_history():
     )
 
     rows = [
-        (
-            row["username"],
-            row["message"],
-            row["timestamp"]
-        )
+        (row["username"], row["message"], row["timestamp"])
         for row in response.data
     ]
-
     emit("chat_history", rows)
 
-# -----------------------------
-# Receive Message
-# -----------------------------
+
 @socketio.on("send_message")
 def handle_message(data):
-
     username = data["username"]
     message = data["message"]
-
     timestamp = datetime.now().strftime("%H:%M:%S")
+
     supabase.table("messageport5555").insert({
         "username": username,
         "message": message,
@@ -140,24 +127,14 @@ def handle_message(data):
         broadcast=True
     )
 
-# -----------------------------
-# Clear History
-# -----------------------------
+
 @socketio.on("clear_history")
 def clear_history():
-
-    supabase.table("messageport5555") \
-        .delete() \
-        .neq("id", 0) \
-        .execute()
-
+    supabase.table("messageport5555").delete().neq("id", 0).execute()
     emit("history_cleared", broadcast=True)
 
-# -----------------------------
-# Start Server
-# -----------------------------
-if __name__ == "__main__":
 
+if __name__ == "__main__":
     print("=" * 45)
     print(" Public Chat Server")
     print("=" * 45)
@@ -166,8 +143,4 @@ if __name__ == "__main__":
     print("AI:", "enabled" if AI_KEY else "disabled - AI_KEY missing")
     print("=" * 45)
 
-    socketio.run(
-        app,
-        host="0.0.0.0",
-        port=5555
-    )
+    socketio.run(app, host="0.0.0.0", port=5555)
