@@ -43,12 +43,68 @@ const aiSendButton = document.getElementById("aiSendButton");
 
 const aiConversation = [];
 let aiUsesRemaining = null;
+let aiUsesElement = null;
+
+function updateUsesRemaining(remaining) {
+    if (typeof remaining !== "number") return;
+
+    aiUsesRemaining = Math.max(0, remaining);
+
+    if (!aiUsesElement) {
+        aiUsesElement = document.getElementById("aiUsesRemaining");
+    }
+
+    if (!aiUsesElement) {
+        aiUsesElement = document.createElement("div");
+        aiUsesElement.id = "aiUsesRemaining";
+        aiUsesElement.className = "ai-uses-remaining";
+        const inputArea = document.getElementById("aiForm");
+        if (inputArea) {
+            inputArea.appendChild(aiUsesElement);
+        } else {
+            aiSidebar.appendChild(aiUsesElement);
+        }
+    }
+
+    aiUsesElement.textContent = `${aiUsesRemaining} AI uses remaining`;
+
+    if (aiUsesRemaining <= 0) {
+        aiInput.disabled = true;
+        aiSendButton.disabled = true;
+        aiInput.placeholder = "No AI uses remaining";
+    } else if (!aiSendButton.dataset.loading) {
+        aiInput.disabled = false;
+        aiSendButton.disabled = false;
+        aiInput.placeholder = "Ask the AI...";
+    }
+}
+
+async function loadAIUses() {
+    try {
+        const response = await fetch("/api/ai/usage", {
+            method: "GET",
+            headers: { "Accept": "application/json" }
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || "Could not load AI usage.");
+        }
+
+        updateUsesRemaining(data.uses_remaining);
+    } catch (error) {
+        console.error("AI usage error:", error);
+        updateUsesRemaining(5);
+    }
+}
 
 function openAI() {
     aiSidebar.classList.add("open");
     aiOverlay.classList.add("open");
     aiSidebar.setAttribute("aria-hidden", "false");
     aiOverlay.setAttribute("aria-hidden", "false");
+    loadAIUses();
     setTimeout(() => aiInput.focus(), 250);
 }
 
@@ -86,29 +142,8 @@ function addAIMessage(text, type) {
     return div;
 }
 
-function updateUsesRemaining(remaining) {
-    if (typeof remaining !== "number") return;
-
-    aiUsesRemaining = remaining;
-
-    let usesElement = document.getElementById("aiUsesRemaining");
-    if (!usesElement) {
-        usesElement = document.createElement("div");
-        usesElement.id = "aiUsesRemaining";
-        usesElement.className = "ai-uses-remaining";
-        aiMessages.parentElement.insertBefore(usesElement, aiMessages);
-    }
-
-    usesElement.textContent = `${remaining} AI uses remaining`;
-
-    if (remaining <= 0) {
-        aiInput.disabled = true;
-        aiSendButton.disabled = true;
-        aiInput.placeholder = "No AI uses remaining";
-    }
-}
-
 function setAILoading(loading) {
+    aiSendButton.dataset.loading = loading ? "true" : "false";
     aiSendButton.disabled = loading || aiUsesRemaining === 0;
     aiInput.disabled = loading || aiUsesRemaining === 0;
     aiSendButton.textContent = loading ? "..." : "Send";
