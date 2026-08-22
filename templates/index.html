@@ -46,8 +46,11 @@
         </div>
 
         <form id="aiForm" class="ai-input-area">
-            <textarea id="aiInput" rows="1" maxlength="2000" placeholder="Ask the AI..." autocomplete="off"></textarea>
-            <button id="aiSendButton" type="submit">Send</button>
+            <div class="ai-input-row">
+                <textarea id="aiInput" rows="1" maxlength="2000" placeholder="Ask the AI..." autocomplete="off"></textarea>
+                <button id="aiSendButton" type="submit">Send</button>
+            </div>
+            <div id="aiUsesRemaining" class="ai-uses-remaining">Loading AI uses remaining...</div>
         </form>
     </aside>
 
