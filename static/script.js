@@ -47,23 +47,16 @@ let aiUsesElement = null;
 
 function updateUsesRemaining(remaining) {
     if (typeof remaining !== "number") return;
-
     aiUsesRemaining = Math.max(0, remaining);
 
-    if (!aiUsesElement) {
-        aiUsesElement = document.getElementById("aiUsesRemaining");
-    }
-
+    if (!aiUsesElement) aiUsesElement = document.getElementById("aiUsesRemaining");
     if (!aiUsesElement) {
         aiUsesElement = document.createElement("div");
         aiUsesElement.id = "aiUsesRemaining";
         aiUsesElement.className = "ai-uses-remaining";
         const inputArea = document.getElementById("aiForm");
-        if (inputArea) {
-            inputArea.appendChild(aiUsesElement);
-        } else {
-            aiSidebar.appendChild(aiUsesElement);
-        }
+        if (inputArea) inputArea.appendChild(aiUsesElement);
+        else aiSidebar.appendChild(aiUsesElement);
     }
 
     aiUsesElement.textContent = `${aiUsesRemaining} AI uses remaining`;
@@ -85,13 +78,8 @@ async function loadAIUses() {
             method: "GET",
             headers: { "Accept": "application/json" }
         });
-
         const data = await response.json();
-
-        if (!response.ok) {
-            throw new Error(data.error || "Could not load AI usage.");
-        }
-
+        if (!response.ok) throw new Error(data.error || "Could not load AI usage.");
         updateUsesRemaining(data.uses_remaining);
     } catch (error) {
         console.error("AI usage error:", error);
@@ -118,27 +106,22 @@ function closeAI() {
 aiOpenButton.addEventListener("click", openAI);
 aiCloseButton.addEventListener("click", closeAI);
 aiOverlay.addEventListener("click", closeAI);
-
-document.addEventListener("keydown", (event) => {
+document.addEventListener("keydown", event => {
     if (event.key === "Escape") closeAI();
 });
 
 function addAIMessage(text, type) {
     const div = document.createElement("div");
     div.className = `ai-message ai-message-${type}`;
-
     const name = document.createElement("div");
     name.className = "ai-message-name";
     name.textContent = type === "user" ? "You" : "AI Assistant";
-
     const body = document.createElement("div");
     body.textContent = text;
-
     div.appendChild(name);
     div.appendChild(body);
     aiMessages.appendChild(div);
     aiMessages.scrollTop = aiMessages.scrollHeight;
-
     return div;
 }
 
@@ -152,41 +135,25 @@ function setAILoading(loading) {
 async function sendAIMessage() {
     const text = aiInput.value.trim();
     if (!text || aiSendButton.disabled) return;
-
     addAIMessage(text, "user");
     aiConversation.push({ role: "user", content: text });
     aiInput.value = "";
     setAILoading(true);
-
     const loadingMessage = addAIMessage("Thinking...", "assistant");
 
     try {
         const response = await fetch("/api/ai", {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                message: text,
-                history: aiConversation.slice(-12)
-            })
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ message: text, history: aiConversation.slice(-12) })
         });
-
         const data = await response.json();
         loadingMessage.remove();
-
-        if (typeof data.uses_remaining === "number") {
-            updateUsesRemaining(data.uses_remaining);
-        }
-
-        if (!response.ok) {
-            throw new Error(data.error || "AI request failed.");
-        }
-
+        if (typeof data.uses_remaining === "number") updateUsesRemaining(data.uses_remaining);
+        if (!response.ok) throw new Error(data.error || "AI request failed.");
         const reply = data.response || "The AI returned an empty response.";
         addAIMessage(reply, "assistant");
         aiConversation.push({ role: "assistant", content: reply });
-
     } catch (error) {
         loadingMessage.remove();
         addAIMessage(error.message, "assistant");
@@ -197,12 +164,12 @@ async function sendAIMessage() {
     }
 }
 
-aiForm.addEventListener("submit", (event) => {
+aiForm.addEventListener("submit", event => {
     event.preventDefault();
     sendAIMessage();
 });
 
-aiInput.addEventListener("keydown", (event) => {
+aiInput.addEventListener("keydown", event => {
     if (event.key === "Enter" && !event.shiftKey) {
         event.preventDefault();
         aiForm.requestSubmit();
@@ -218,15 +185,92 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-function addMessage(user, text, time) {
+let activeMessageMenu = null;
+
+function closeMessageMenu() {
+    if (activeMessageMenu) {
+        activeMessageMenu.remove();
+        activeMessageMenu = null;
+    }
+    document.querySelectorAll(".message.message-selected").forEach(el => el.classList.remove("message-selected"));
+}
+
+function showMessageMenu(div, id, protectedMessage) {
+    closeMessageMenu();
+    div.classList.add("message-selected");
+
+    const menu = document.createElement("div");
+    menu.className = "message-actions";
+
+    const protectButton = document.createElement("button");
+    protectButton.type = "button";
+    protectButton.className = "message-action-protect";
+    protectButton.textContent = protectedMessage ? "Unprotect" : "Protect from deletion";
+    protectButton.addEventListener("click", event => {
+        event.stopPropagation();
+        socket.emit("toggle_message_protection", { id });
+        closeMessageMenu();
+    });
+
+    const deleteButton = document.createElement("button");
+    deleteButton.type = "button";
+    deleteButton.className = "message-action-delete";
+    deleteButton.textContent = protectedMessage ? "Protected" : "Delete message";
+    deleteButton.disabled = protectedMessage;
+    deleteButton.addEventListener("click", event => {
+        event.stopPropagation();
+        if (!protectedMessage && confirm("Delete this message?")) {
+            socket.emit("delete_message", { id });
+        }
+        closeMessageMenu();
+    });
+
+    menu.appendChild(protectButton);
+    menu.appendChild(deleteButton);
+    div.appendChild(menu);
+    activeMessageMenu = menu;
+}
+
+function addMessage(id, user, text, time, protectedMessage = false) {
     const div = document.createElement("div");
     div.className = user === "[SERVER]" ? "message server-message" : "message";
+    div.dataset.messageId = id;
+    div.dataset.protected = protectedMessage ? "true" : "false";
+
     div.innerHTML =
         `<span class="time">[${escapeHtml(time)}]</span> ` +
         `<span class="user">${escapeHtml(user)}</span>: ` +
         `<span class="text">${escapeHtml(text)}</span>`;
+
+    if (protectedMessage) {
+        const badge = document.createElement("span");
+        badge.className = "protected-badge";
+        badge.textContent = " Protected";
+        div.appendChild(badge);
+    }
+
+    div.addEventListener("click", event => {
+        if (event.target.closest(".message-actions")) return;
+        showMessageMenu(div, id, div.dataset.protected === "true");
+    });
+
     chatBox.appendChild(div);
     chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+function updateMessageProtection(id, protectedMessage) {
+    const div = document.querySelector(`.message[data-message-id="${CSS.escape(String(id))}"]`);
+    if (!div) return;
+
+    div.dataset.protected = protectedMessage ? "true" : "false";
+    div.querySelector(".protected-badge")?.remove();
+
+    if (protectedMessage) {
+        const badge = document.createElement("span");
+        badge.className = "protected-badge";
+        badge.textContent = " Protected";
+        div.appendChild(badge);
+    }
 }
 
 socket.on("connect", () => {
@@ -235,15 +279,34 @@ socket.on("connect", () => {
 });
 
 socket.on("disconnect", () => console.log("Disconnected from chat server"));
-socket.on("connect_error", (error) => console.error("Socket.IO connection error:", error));
+socket.on("connect_error", error => console.error("Socket.IO connection error:", error));
 
-socket.on("chat_history", (history) => {
+socket.on("chat_history", history => {
+    closeMessageMenu();
     chatBox.innerHTML = "";
-    history.forEach(msg => addMessage(msg[0], msg[1], msg[2]));
+    history.forEach(msg => addMessage(msg[0], msg[1], msg[2], msg[3], msg[4]));
 });
 
-socket.on("new_message", (data) => addMessage(data.username, data.message, data.timestamp));
-socket.on("history_cleared", () => chatBox.innerHTML = "");
+socket.on("new_message", data => addMessage(data.id, data.username, data.message, data.timestamp, data.protected));
+
+socket.on("message_deleted", data => {
+    closeMessageMenu();
+    const div = document.querySelector(`.message[data-message-id="${CSS.escape(String(data.id))}"]`);
+    if (div) div.remove();
+});
+
+socket.on("message_protection_changed", data => {
+    updateMessageProtection(data.id, data.protected);
+});
+
+socket.on("message_action_error", data => {
+    alert(data.error || "The message action could not be completed.");
+});
+
+socket.on("history_cleared", () => {
+    closeMessageMenu();
+    document.querySelectorAll(".message:not([data-protected='true'])").forEach(div => div.remove());
+});
 
 function sendMessage() {
     const user = username.value.trim();
@@ -266,7 +329,7 @@ function sendMessage() {
 
 sendButton.addEventListener("click", sendMessage);
 
-message.addEventListener("keydown", (event) => {
+message.addEventListener("keydown", event => {
     if (event.key === "Enter") {
         event.preventDefault();
         sendMessage();
@@ -274,7 +337,11 @@ message.addEventListener("keydown", (event) => {
 });
 
 clearButton.addEventListener("click", () => {
-    if (confirm("Clear the entire chat history?")) {
+    if (confirm("Clear the chat? Protected messages will stay.")) {
         socket.emit("clear_history");
     }
+});
+
+document.addEventListener("click", event => {
+    if (!event.target.closest(".message")) closeMessageMenu();
 });
