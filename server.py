@@ -6,7 +6,6 @@ from supabase import create_client
 from openai import OpenAI
 import hashlib
 
-
 SUPABASE_URL = os.environ["SUPABASE_URL"]
 SUPABASE_KEY = os.environ["SUPABASE_PUBLISHABLE_KEY"]
 AI_KEY = os.environ.get("AI_KEY")
@@ -15,14 +14,13 @@ supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.environ.get("FLASK_SECRET_KEY", "development-secret")
-
 socketio = SocketIO(app, cors_allowed_origins="*")
-
 openai_client = OpenAI(api_key=AI_KEY) if AI_KEY else None
 
-# One AI use per visitor while this server instance is running.
-# The IP is hashed so the raw IP address is not stored in this set.
-ai_users = set()
+# Five AI uses per visitor while this server instance is running.
+# Only a hash of the visitor IP is kept in memory.
+ai_users = {}
+AI_MAX_USES = 5
 
 
 def ai_user_id():
@@ -43,8 +41,14 @@ def ai_assistant():
         return jsonify({"error": "AI_KEY is not configured on the server."}), 500
 
     user_id = ai_user_id()
-    if user_id in ai_users:
-        return jsonify({"error": "You have already used the AI assistant. Each person can use it once."}), 429
+    used = ai_users.get(user_id, 0)
+    remaining = AI_MAX_USES - used
+
+    if remaining <= 0:
+        return jsonify({
+            "error": "You have no AI uses remaining.",
+            "uses_remaining": 0
+        }), 429
 
     data = request.get_json(silent=True) or {}
     message = str(data.get("message", "")).strip()
@@ -52,7 +56,6 @@ def ai_assistant():
 
     if not message:
         return jsonify({"error": "Please enter a message."}), 400
-
     if len(message) > 2000:
         return jsonify({"error": "Message is too long."}), 400
 
@@ -78,9 +81,14 @@ def ai_assistant():
             input=conversation,
         )
 
-        # Only consume the one allowed use after a successful AI response.
-        ai_users.add(user_id)
-        return jsonify({"response": response.output_text})
+        used += 1
+        ai_users[user_id] = used
+        remaining = AI_MAX_USES - used
+
+        return jsonify({
+            "response": response.output_text,
+            "uses_remaining": remaining
+        })
 
     except Exception as error:
         print("AI request failed:", repr(error))
@@ -90,18 +98,13 @@ def ai_assistant():
 @socketio.on("request_history")
 def send_history():
     response = (
-        supabase
-        .table("messageport5555")
+        supabase.table("messageport5555")
         .select("username, message, timestamp")
         .order("id")
         .limit(500)
         .execute()
     )
-
-    rows = [
-        (row["username"], row["message"], row["timestamp"])
-        for row in response.data
-    ]
+    rows = [(row["username"], row["message"], row["timestamp"]) for row in response.data]
     emit("chat_history", rows)
 
 
@@ -110,22 +113,16 @@ def handle_message(data):
     username = data["username"]
     message = data["message"]
     timestamp = datetime.now().strftime("%H:%M:%S")
-
     supabase.table("messageport5555").insert({
         "username": username,
         "message": message,
         "timestamp": timestamp
     }).execute()
-
-    emit(
-        "new_message",
-        {
-            "username": username,
-            "message": message,
-            "timestamp": timestamp
-        },
-        broadcast=True
-    )
+    emit("new_message", {
+        "username": username,
+        "message": message,
+        "timestamp": timestamp
+    }, broadcast=True)
 
 
 @socketio.on("clear_history")
@@ -142,5 +139,4 @@ if __name__ == "__main__":
     print("Database:", SUPABASE_URL)
     print("AI:", "enabled" if AI_KEY else "disabled - AI_KEY missing")
     print("=" * 45)
-
     socketio.run(app, host="0.0.0.0", port=5555)
