@@ -28,18 +28,12 @@ def ai_user_id():
 
 
 def get_ai_uses(visitor_id):
-    result = supabase.rpc(
-        "get_ai_usage",
-        {"p_visitor_id": visitor_id}
-    ).execute()
+    result = supabase.rpc("get_ai_usage", {"p_visitor_id": visitor_id}).execute()
     return int(result.data or 0)
 
 
 def increment_ai_uses(visitor_id):
-    result = supabase.rpc(
-        "increment_ai_usage",
-        {"p_visitor_id": visitor_id}
-    ).execute()
+    result = supabase.rpc("increment_ai_usage", {"p_visitor_id": visitor_id}).execute()
     return int(result.data)
 
 
@@ -52,13 +46,10 @@ def index():
 def ai_usage():
     if not SUPABASE_URL or not SUPABASE_KEY:
         return jsonify({"error": "Supabase is not configured."}), 500
-
     visitor_id = ai_user_id()
-
     try:
         used = get_ai_uses(visitor_id)
-        remaining = max(0, AI_MAX_USES - used)
-        return jsonify({"uses_remaining": remaining})
+        return jsonify({"uses_remaining": max(0, AI_MAX_USES - used)})
     except Exception as error:
         print("Supabase usage lookup failed:", repr(error))
         return jsonify({"error": "Could not check your AI usage."}), 500
@@ -70,7 +61,6 @@ def ai_assistant():
         return jsonify({"error": "AI_KEY is not configured on the server."}), 500
 
     visitor_id = ai_user_id()
-
     try:
         used = get_ai_uses(visitor_id)
     except Exception as error:
@@ -78,12 +68,8 @@ def ai_assistant():
         return jsonify({"error": "Could not check your AI usage."}), 500
 
     remaining = AI_MAX_USES - used
-
     if remaining <= 0:
-        return jsonify({
-            "error": "You have no AI uses remaining.",
-            "uses_remaining": 0
-        }), 429
+        return jsonify({"error": "You have no AI uses remaining.", "uses_remaining": 0}), 429
 
     data = request.get_json(silent=True) or {}
     message = str(data.get("message", "")).strip()
@@ -91,12 +77,10 @@ def ai_assistant():
 
     if not message:
         return jsonify({"error": "Please enter a message."}), 400
-
     if len(message) > 2000:
         return jsonify({"error": "Message is too long."}), 400
 
     conversation = []
-
     if isinstance(history, list):
         for item in history[-12:]:
             if not isinstance(item, dict):
@@ -104,23 +88,15 @@ def ai_assistant():
             role = item.get("role")
             text = str(item.get("content", "")).strip()
             if role in ("user", "assistant") and text:
-                conversation.append({
-                    "role": role,
-                    "content": text[:4000]
-                })
+                conversation.append({"role": role, "content": text[:4000]})
 
-    conversation.append({
-        "role": "user",
-        "content": message
-    })
+    conversation.append({"role": "user", "content": message})
 
     try:
         response = openai_client.responses.create(
             model="gpt-4.1-mini",
-            instructions=(
-                "You are the AI assistant inside Woocorp Public Chat. "
-                "Be helpful, concise, friendly, and clear."
-            ),
+            instructions=("You are the AI assistant inside Woocorp Public Chat. "
+                          "Be helpful, concise, friendly, and clear."),
             input=conversation,
         )
 
@@ -128,64 +104,111 @@ def ai_assistant():
             used = increment_ai_uses(visitor_id)
         except Exception as error:
             print("Supabase usage save failed:", repr(error))
-            return jsonify({
-                "error": "The AI replied, but your usage could not be saved. Please try again."
-            }), 500
+            return jsonify({"error": "The AI replied, but your usage could not be saved. Please try again."}), 500
 
-        remaining = AI_MAX_USES - used
-
-        return jsonify({
-            "response": response.output_text,
-            "uses_remaining": remaining
-        })
+        return jsonify({"response": response.output_text, "uses_remaining": AI_MAX_USES - used})
 
     except Exception as error:
         print("AI request failed:", repr(error))
-        return jsonify({
-            "error": "The AI assistant could not get a response."
-        }), 502
+        return jsonify({"error": "The AI assistant could not get a response."}), 502
 
 
 @socketio.on("request_history")
 def send_history():
-    response = (
-        supabase.table("messageport5555")
-        .select("username, message, timestamp")
-        .order("id")
-        .limit(500)
-        .execute()
-    )
+    response = (supabase.table("messageport5555")
+                .select("id, username, message, timestamp, protected")
+                .order("id")
+                .limit(500)
+                .execute())
 
     rows = [
-        (row["username"], row["message"], row["timestamp"])
+        (row["id"], row["username"], row["message"], row["timestamp"], bool(row.get("protected", False)))
         for row in response.data
     ]
-
     emit("chat_history", rows)
 
 
 @socketio.on("send_message")
 def handle_message(data):
-    username = data["username"]
-    message = data["message"]
-    timestamp = datetime.now().strftime("%H:%M:%S")
+    username = str(data.get("username", "")).strip()[:20]
+    message = str(data.get("message", "")).strip()[:500]
+    if not username or not message:
+        return
 
-    supabase.table("messageport5555").insert({
-        "username": username,
-        "message": message,
-        "timestamp": timestamp
-    }).execute()
+    timestamp = datetime.now().strftime("%H:%M:%S")
+    result = (supabase.table("messageport5555")
+              .insert({"username": username, "message": message, "timestamp": timestamp, "protected": False})
+              .select("id, username, message, timestamp, protected")
+              .single()
+              .execute())
+    row = result.data
 
     emit("new_message", {
-        "username": username,
-        "message": message,
-        "timestamp": timestamp
+        "id": row["id"],
+        "username": row["username"],
+        "message": row["message"],
+        "timestamp": row["timestamp"],
+        "protected": bool(row.get("protected", False))
+    }, broadcast=True)
+
+
+@socketio.on("delete_message")
+def delete_message(data):
+    try:
+        message_id = int(data.get("id"))
+    except (TypeError, ValueError):
+        emit("message_action_error", {"error": "Invalid message."})
+        return
+
+    result = (supabase.table("messageport5555")
+              .select("id, protected")
+              .eq("id", message_id)
+              .maybe_single()
+              .execute())
+
+    if not result.data:
+        emit("message_action_error", {"error": "Message not found."})
+        return
+
+    if bool(result.data.get("protected", False)):
+        emit("message_action_error", {"error": "That message is protected from deletion."})
+        return
+
+    supabase.table("messageport5555").delete().eq("id", message_id).execute()
+    emit("message_deleted", {"id": message_id}, broadcast=True)
+
+
+@socketio.on("toggle_message_protection")
+def toggle_message_protection(data):
+    try:
+        message_id = int(data.get("id"))
+    except (TypeError, ValueError):
+        emit("message_action_error", {"error": "Invalid message."})
+        return
+
+    result = (supabase.table("messageport5555")
+              .select("id, protected")
+              .eq("id", message_id)
+              .maybe_single()
+              .execute())
+
+    if not result.data:
+        emit("message_action_error", {"error": "Message not found."})
+        return
+
+    new_protected = not bool(result.data.get("protected", False))
+    supabase.table("messageport5555").update({"protected": new_protected}).eq("id", message_id).execute()
+
+    emit("message_protection_changed", {
+        "id": message_id,
+        "protected": new_protected
     }, broadcast=True)
 
 
 @socketio.on("clear_history")
 def clear_history():
-    supabase.table("messageport5555").delete().neq("id", 0).execute()
+    # Protected messages intentionally survive Clear Chat.
+    supabase.table("messageport5555").delete().eq("protected", False).execute()
     emit("history_cleared", broadcast=True)
 
 
@@ -197,9 +220,4 @@ if __name__ == "__main__":
     print("Database:", SUPABASE_URL)
     print("AI:", "enabled" if AI_KEY else "disabled - AI_KEY missing")
     print("=" * 45)
-
-    socketio.run(
-        app,
-        host="0.0.0.0",
-        port=5555
-    )
+    socketio.run(app, host="0.0.0.0", port=5555)
