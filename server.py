@@ -48,6 +48,22 @@ def index():
     return render_template("index.html")
 
 
+@app.get("/api/ai/usage")
+def ai_usage():
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        return jsonify({"error": "Supabase is not configured."}), 500
+
+    visitor_id = ai_user_id()
+
+    try:
+        used = get_ai_uses(visitor_id)
+        remaining = max(0, AI_MAX_USES - used)
+        return jsonify({"uses_remaining": remaining})
+    except Exception as error:
+        print("Supabase usage lookup failed:", repr(error))
+        return jsonify({"error": "Could not check your AI usage."}), 500
+
+
 @app.post("/api/ai")
 def ai_assistant():
     if openai_client is None:
@@ -108,7 +124,6 @@ def ai_assistant():
             input=conversation,
         )
 
-        # Consume one use only after OpenAI successfully responds.
         try:
             used = increment_ai_uses(visitor_id)
         except Exception as error:
