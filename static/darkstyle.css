@@ -16,13 +16,8 @@ body {
     margin: 30px auto;
 }
 
-header {
-    position: relative;
-}
-
-h1 {
-    text-align: center;
-}
+header { position: relative; }
+h1 { text-align: center; }
 
 #chat-box {
     height: 500px;
@@ -42,171 +37,55 @@ h1 {
 .server-message .user { color: #058110; font-weight: bold; }
 .server-message .text { color: #058110; }
 .server-message .time { color: #2e2e2e; }
-
-.message {
-    color: #dddddd63;
-    padding: 8px;
-    margin-bottom: 8px;
-    border-bottom: 1px solid #444;
-    word-wrap: break-word;
-}
-
+.message { color: #dddddd63; padding: 8px; margin-bottom: 8px; border-bottom: 1px solid #444; word-wrap: break-word; }
 .time { color: #999; font-size: 12px; }
 .user { color: #4FC3F7; font-weight: bold; }
 .text { color: white; }
 
-.controls {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-}
-
-.controls input {
-    flex: 1;
-    min-width: 200px;
-    padding: 10px;
-    border: none;
-    border-radius: 5px;
-    background: #3b3b3b;
-    color: white;
-    font-size: 15px;
-}
-
-#themeButton img {
-    width: 20px;
-    height: 20px;
-    vertical-align: middle;
-    margin-right: 6px;
-}
-
+.controls { display: flex; flex-wrap: wrap; gap: 10px; }
+.controls input { flex: 1; min-width: 200px; padding: 10px; border: none; border-radius: 5px; background: #3b3b3b; color: white; font-size: 15px; }
 .controls input::placeholder { color: #bbbbbb; }
 
-.controls button,
-.ai-open-button,
-.ai-send-button {
-    padding: 10px 20px;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    background: #4b8fc8;
-    color: white;
-    font-size: 15px;
-    transition: background 0.2s;
-}
-
-.controls button:hover,
-.ai-open-button:hover,
-.ai-send-button:hover { background: #325b84; }
-
+#themeButton img { width: 20px; height: 20px; vertical-align: middle; margin-right: 6px; }
+.controls button, .ai-open-button, .ai-send-button { padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; background: #4b8fc8; color: white; font-size: 15px; transition: background 0.2s; }
+.controls button:hover, .ai-open-button:hover, .ai-send-button:hover { background: #325b84; }
 #clearButton { background: #d32f2f; }
 #clearButton:hover { background: #b71c1c; }
 
-.ai-open-button {
-    position: fixed;
-    top: 15px;
-    right: 15px;
-    z-index: 1000;
-}
-
-.ai-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.35);
-    opacity: 0;
-    visibility: hidden;
-    transition: opacity 0.25s ease, visibility 0.25s ease;
-    z-index: 1998;
-}
-
-.ai-overlay.open {
-    opacity: 1;
-    visibility: visible;
-}
-
-.ai-sidebar {
-    position: fixed;
-    top: 0;
-    right: 0;
-    width: min(420px, 92vw);
-    height: 100vh;
-    display: flex;
-    flex-direction: column;
-    background: #252525;
-    border-left: 1px solid #444;
-    box-shadow: -8px 0 30px rgba(0, 0, 0, 0.4);
-    transform: translateX(100%);
-    transition: transform 0.3s ease;
-    z-index: 1999;
-}
-
+.ai-open-button { position: fixed; top: 15px; right: 15px; z-index: 1000; }
+.ai-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.35); opacity: 0; visibility: hidden; transition: opacity .25s ease, visibility .25s ease; z-index: 1998; }
+.ai-overlay.open { opacity: 1; visibility: visible; }
+.ai-sidebar { position: fixed; top: 0; right: 0; width: min(420px,92vw); height: 100vh; display: flex; flex-direction: column; background: #252525; border-left: 1px solid #444; box-shadow: -8px 0 30px rgba(0,0,0,.4); transform: translateX(100%); transition: transform .3s ease; z-index: 1999; }
 .ai-sidebar.open { transform: translateX(0); }
-
-.ai-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 18px;
-    border-bottom: 1px solid #444;
-}
-
+.ai-header { display: flex; align-items: center; justify-content: space-between; padding: 18px; border-bottom: 1px solid #444; }
 .ai-title { font-size: 19px; font-weight: bold; }
 .ai-status { margin-top: 4px; color: #79c779; font-size: 12px; }
-
-.ai-close-button {
-    width: 38px;
-    height: 38px;
-    border: 0;
-    border-radius: 8px;
-    background: transparent;
-    color: white;
-    font-size: 28px;
-    cursor: pointer;
-}
-
+.ai-close-button { width: 38px; height: 38px; border: 0; border-radius: 8px; background: transparent; color: white; font-size: 28px; cursor: pointer; }
 .ai-close-button:hover { background: #3b3b3b; }
 
-.ai-messages {
-    flex: 1;
-    overflow-y: auto;
-    padding: 16px;
-}
-
-.ai-message {
-    max-width: 90%;
-    padding: 10px 12px;
-    margin-bottom: 12px;
-    border-radius: 12px;
-    line-height: 1.4;
-    word-wrap: break-word;
-}
-
+.ai-messages { flex: 1; overflow-y: auto; padding: 16px; }
+.ai-message { max-width: 90%; padding: 10px 12px; margin-bottom: 12px; border-radius: 12px; line-height: 1.4; word-wrap: break-word; }
 .ai-message-assistant { background: #333333; }
 .ai-message-user { margin-left: auto; background: #4b8fc8; }
-.ai-message-name { font-size: 11px; opacity: 0.7; margin-bottom: 4px; }
+.ai-message-name { font-size: 11px; opacity: .7; margin-bottom: 4px; }
 
-.ai-input-area {
-    display: flex;
-    gap: 8px;
-    padding: 14px;
-    border-top: 1px solid #444;
-}
-
-#aiInput {
-    flex: 1;
-    resize: none;
-    min-height: 42px;
-    max-height: 140px;
-    padding: 11px;
-    border: 1px solid #444;
-    border-radius: 8px;
-    background: #333;
-    color: white;
-    font: inherit;
-}
-
+.ai-input-area { display: flex; gap: 8px; padding: 14px; border-top: 1px solid #444; }
+#aiInput { flex: 1; resize: none; min-height: 42px; max-height: 140px; padding: 11px; border: 1px solid #444; border-radius: 8px; background: #333; color: white; font: inherit; }
 #aiInput::placeholder { color: #aaa; }
+.ai-send-button:disabled { opacity: .5; cursor: not-allowed; }
 
-.ai-send-button:disabled { opacity: 0.5; cursor: not-allowed; }
+/* Large AI uses counter under the send bar */
+.ai-uses-remaining {
+    order: 3;
+    width: 100%;
+    text-align: center;
+    padding: 16px 10px 20px;
+    font-size: 20px;
+    font-weight: bold;
+    color: white;
+    border-top: 1px solid #444;
+    background: #202020;
+}
 
 @media (max-width: 700px) {
     .controls { flex-direction: column; }
