@@ -41,7 +41,7 @@ h1 { text-align: center; }
 
 .time { color: #666666; font-size: 12px; }
 .user { color: #1976d2; font-weight: bold; }
-.text { color: #222222; }
+.text { color: #808080; }
 
 .controls { display: flex; flex-wrap: wrap; gap: 10px; }
 
