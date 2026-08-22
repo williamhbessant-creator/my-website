@@ -125,7 +125,7 @@ h1 { text-align: center; }
 }
 
 .ai-title { font-size: 19px; font-weight: bold; }
-.ai-status { margin-top: 4px; color: #3b8f3b; font-size: 12px; }
+.ai-status { margin-top: 6px; color: #3b8f3b; font-size: 12px; }
 
 .ai-close-button {
     width: 38px;
